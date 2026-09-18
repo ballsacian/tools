@@ -104,6 +104,28 @@ shipped it.
 Default branch is `master`, not `main` — workflow triggers and
 `.changeset/config.json` `baseBranch` both depend on it.
 
+## CI security model
+
+This repository is public, so CI executes code from strangers. The design goal
+is that **no workflow which can run untrusted code can ever reach a secret.**
+
+| Control                                     | Where          | Why                                                                                                                                                                                                                |
+| ------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pull_request`, never `pull_request_target` | `ci.yml`       | A fork's PR runs with no secrets and a read-only token. `pull_request_target` would run the same untrusted code _with_ secrets — the single worst change anyone could make here.                                   |
+| `permissions:` declared explicitly          | both workflows | The repository default is now `read`, but a declared block means a future default change cannot silently widen a job. `release.yml` starts from `permissions: {}`.                                                 |
+| Actions pinned to commit SHAs               | both workflows | A tag is mutable. Repointing `@v1` runs new code inside the job holding `NPM_TOKEN`. **`sha_pinning_required` is enabled on the repository**, so GitHub rejects a workflow that reintroduces a tag.                |
+| `persist-credentials: false`                | every checkout | Keeps a usable git credential out of `.git/config`, where a PR-authored build script could find it.                                                                                                                |
+| `timeout-minutes`                           | every job      | A fork PR gets no secrets, so the residual risk is runner abuse. This bounds it.                                                                                                                                   |
+| `--frozen-lockfile`                         | every install  | A PR cannot resolve anything the committed lockfile does not already pin. Dependency lifecycle scripts do not run at all: pnpm 10+ blocks them unless named in `pnpm.onlyBuiltDependencies`, and nothing is named. |
+| `environment: npm-publish`                  | `release.yml`  | `NPM_TOKEN` lives in the environment, not in repository secrets, so no other workflow can read it. The environment requires a human reviewer and is restricted to `master`.                                        |
+
+**Do not move the version bump into CI.** The stock changesets setup has the
+workflow open a "version packages" PR, which needs `contents: write`,
+`pull-requests: write`, and the repository setting allowing Actions to create
+pull requests — all granted to the one job that also holds `NPM_TOKEN`.
+Versioning locally removes every one of those. The publish job can read the
+repo, mint an OIDC token, and publish; it cannot write to the repository at all.
+
 ## Publishing
 
 `publishConfig.provenance` is `true`. npm requires provenance to be generated
@@ -111,7 +133,18 @@ from a **public** repository, on a cloud-hosted CI runner, with `id-token: write
 — all of which `.github/workflows/release.yml` satisfies. The repo is public for
 this reason.
 
-Provenance therefore cannot be produced by a local `npm publish`. Releases go
-through CI: land a changeset on `master`, merge the version PR the workflow
-opens, and that publishes. The publish step fails safely when `NPM_TOKEN` is
-absent.
+Provenance therefore cannot be produced by a local `npm publish` — it needs CI
+with OIDC. But the _version bump_ is deliberately local, for the reasons above.
+The release flow is:
+
+```bash
+pnpm changeset          # describe the change (usually in the PR that makes it)
+pnpm version-packages   # bump versions + CHANGELOG, refresh the lockfile
+git commit -am "chore: version packages"
+pnpm tag-release        # create the git tags
+git push --follow-tags  # CI publishes what is now committed
+```
+
+The publish job then waits for a reviewer on the `npm-publish` environment. It
+is a no-op when nothing needs releasing: changesets compares each package
+against the registry and exits cleanly if the versions match.

@@ -22,7 +22,7 @@
     "format": "prettier --write .",
     "changeset": "changeset",
     "version-packages": "changeset version && pnpm install --lockfile-only",
-    "release": "pnpm build && changeset publish"
+    "tag-release": "changeset tag"
   },
   "devDependencies": {
     "@changesets/changelog-github": "^1.0.1",

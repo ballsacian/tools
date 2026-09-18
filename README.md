@@ -29,14 +29,21 @@ pnpm format         # prettier --write
 
 ### Releasing
 
-[Changesets](https://github.com/changesets/changesets). Add one in the PR that
-makes a user-visible change:
+[Changesets](https://github.com/changesets/changesets). Describe the change,
+version locally, and let CI publish:
 
 ```bash
-pnpm changeset
+pnpm changeset          # describe the change, in the PR that makes it
+pnpm version-packages   # bump versions + CHANGELOG, refresh the lockfile
+pnpm tag-release        # create the git tags
+git push --follow-tags
 ```
 
-Merging to `master` opens a version PR; merging _that_ publishes.
+The version bump is deliberately **not** done in CI. Doing it there would
+require granting `contents: write` and pull-request creation to the one job that
+also holds the npm token; doing it here means that job can only read, mint an
+OIDC token for provenance, and publish. Publishing then waits on a human
+reviewer. See [CLAUDE.md](./CLAUDE.md) § CI security model.
 
 ## Conventions
 
