@@ -1,0 +1,10 @@
+{
+  // Path aliases for the app.
+  "compilerOptions": {
+    "baseUrl": ".",
+    // Docs: https://www.typescriptlang.org/tsconfig#paths
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+  }
+}

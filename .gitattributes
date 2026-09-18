@@ -1,0 +1,18 @@
+# This machine has `core.autocrlf=true` globally, which would give the working
+# tree CRLF and make every file disagree with CI on Linux. `eol=lf` overrides
+# autocrlf for this repo, so the checked-out bytes match the committed bytes
+# match what CI sees.
+#
+# This matters more here than in a normal repo: shadcn-drift's whole job is
+# comparing file content against a registry, and a line-ending mismatch is
+# exactly the kind of false positive it exists to rule out. Its own sources
+# should not be a source of that confusion.
+* text=auto eol=lf
+
+# Recorded registry payloads are compared byte-for-byte by the test suite.
+# Never let git normalize them.
+packages/*/test/fixtures/** -text
+
+*.png binary
+*.jpg binary
+*.ico binary

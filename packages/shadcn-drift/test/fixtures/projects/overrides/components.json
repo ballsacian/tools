@@ -1,0 +1,6 @@
+{
+  "style": "new-york",
+  "tailwind": { "config": "" },
+  "aliases": { "ui": "@/nowhere/at/all" },
+  "drift": { "uiDir": "weird/place/ui", "registryStyle": "new-york", "registryAllowlist": ["registry.acme.dev"] }
+}

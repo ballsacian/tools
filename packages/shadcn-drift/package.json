@@ -1,0 +1,59 @@
+{
+  "name": "shadcn-drift",
+  "version": "0.0.0",
+  "description": "Detect drift between vendored shadcn/ui components and their registry sources, and verify that what claims to be shadcn actually is.",
+  "keywords": [
+    "shadcn",
+    "shadcn-ui",
+    "drift",
+    "registry",
+    "provenance",
+    "vendoring",
+    "cli"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "shadcn-drift": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ballsacian/tools.git",
+    "directory": "packages/shadcn-drift"
+  },
+  "bugs": {
+    "url": "https://github.com/ballsacian/tools/issues"
+  },
+  "homepage": "https://github.com/ballsacian/tools/tree/master/packages/shadcn-drift#readme",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.1",
+    "vitest": "^5.0.1"
+  },
+  "dependencies": {
+    "jsonc-parser": "^3.3.1"
+  }
+}

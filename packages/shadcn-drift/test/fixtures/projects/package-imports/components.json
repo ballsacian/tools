@@ -1,0 +1,5 @@
+{
+  "style": "new-york",
+  "tailwind": { "config": "" },
+  "aliases": { "utils": "#/lib/utils", "ui": "#/components/ui" }
+}

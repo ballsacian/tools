@@ -1,0 +1,5 @@
+{
+  "style": "new-york",
+  "tailwind": { "config": "tailwind.config.js" },
+  "aliases": { "ui": "@/components/ui" }
+}

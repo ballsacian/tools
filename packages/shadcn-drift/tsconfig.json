@@ -1,0 +1,25 @@
+{
+  // The *tooling* config: what ESLint's project service, your editor, and
+  // `typecheck` all resolve to, because it is the nearest `tsconfig.json`. It
+  // deliberately covers everything — src, tests, and the vitest config — so no
+  // file is invisible to type-aware lint rules.
+  //
+  // Emit is `tsconfig.build.json`'s job. Splitting them is what keeps `dist/`
+  // free of test code without hiding test code from the linter.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false
+  },
+  "include": ["src", "test", "vitest.config.ts"],
+  // Fixtures are sample *projects* — miniature repos with their own
+  // package.json and module semantics, fed to the resolver as data. Compiling
+  // them means type-checking someone else's hypothetical app, which fails for
+  // reasons that say nothing about this package (a fixture without
+  // `"type": "module"` is CommonJS, and `verbatimModuleSyntax` rejects its
+  // exports). ESLint and Prettier already exclude them for the same reason.
+  "exclude": ["test/fixtures"]
+}

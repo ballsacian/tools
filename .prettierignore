@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Generated — reformatting it creates noise in every diff and can desync the
+# integrity hashes pnpm writes.
+pnpm-lock.yaml
+
+# Written by changesets.
+CHANGELOG.md
+
+# Recorded registry payloads and sample projects. The test suite compares these
+# byte-for-byte; formatting them would rewrite the very thing under test.
+# `.gitattributes` keeps git from touching them for the same reason.
+packages/*/test/fixtures/

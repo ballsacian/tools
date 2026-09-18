@@ -1,0 +1,16 @@
+{
+  // The *emit* config, referenced by the root solution file and driven by
+  // `tsc -b`. Narrower than `tsconfig.json` on purpose: only `src`, never tests,
+  // so nothing test-shaped reaches `dist/` and therefore the published tarball.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    // Explicit rather than relying on automatic `node_modules/@types/*`
+    // inclusion — it pins exactly which ambient globals are in scope instead of
+    // absorbing whatever any transitive dependency happens to install.
+    "types": ["node"]
+  },
+  "include": ["src"],
+  "exclude": ["**/*.test.ts"]
+}

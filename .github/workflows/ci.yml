@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: ${{ matrix.os }} / node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Windows is not optional here. shadcn-drift resolves paths out of
+        # tsconfig/package.json and shells out to git, and both are where
+        # cross-platform bugs actually live — during development a Windows
+        # absolute path (`E:/...`) had to become a `file://` URL before Node's
+        # ESM loader would take it. Linux-only CI would not have caught that.
+        os: [ubuntu-latest, windows-latest]
+        node: [22]
+        include:
+          # Lower bound of the supported range, checked once.
+          - os: ubuntu-latest
+            node: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint (format, eslint, types)
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
+
+      - name: Test
+        run: pnpm test

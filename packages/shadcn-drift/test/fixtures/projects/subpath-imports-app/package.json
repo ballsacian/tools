@@ -1,0 +1,10 @@
+{
+  "name": "fixture-subpath-imports-app",
+  "type": "module",
+  "imports": {
+    "#/*": "./src/*"
+  },
+  "devDependencies": {
+    "tailwindcss": "^4.1.18"
+  }
+}

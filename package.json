@@ -1,0 +1,38 @@
+{
+  "name": "@ballsacian/tools",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.5.1",
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ballsacian/tools.git"
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean",
+    "test": "pnpm -r test",
+    "lint": "pnpm lint:format && pnpm lint:eslint && pnpm lint:ts",
+    "lint:format": "prettier --check .",
+    "lint:eslint": "eslint --cache .",
+    "lint:ts": "tsc -b && pnpm -r --if-present typecheck",
+    "format": "prettier --write .",
+    "changeset": "changeset",
+    "version-packages": "changeset version && pnpm install --lockfile-only",
+    "release": "pnpm build && changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "^1.0.1",
+    "@changesets/cli": "^3.0.3",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.1",
+    "eslint": "^10.10.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.7",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.70.0"
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "name": "fixture-package-imports",
+  "imports": { "#/*": "./src/*" },
+  "devDependencies": { "tailwindcss": "^4.1.0" }
+}
