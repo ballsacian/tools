@@ -94,16 +94,24 @@ a finding, and never let one exit 0.
 ## CI
 
 `.github/workflows/ci.yml` runs on **Windows and Linux**. Not ceremony: these
-tools resolve paths out of `tsconfig`/`package.json` and shell out to `git`, and
-during development a Windows absolute path (`E:/…`) had to become a `file://`
-URL before Node's ESM loader would accept it. Linux-only CI would have shipped
-that.
+tools resolve paths out of `tsconfig`/`package.json` and load the consumer's own
+Prettier by absolute path. Twice during development a Windows absolute path
+(`E:\…`) had to become a `file://` URL before Node's ESM loader would accept it
+— and in `formatter.ts` that failure mode is silent, degrading to an unformatted
+comparison that reports every component as drifted. Linux-only CI would have
+shipped it.
 
 Default branch is `master`, not `main` — workflow triggers and
 `.changeset/config.json` `baseBranch` both depend on it.
 
 ## Publishing
 
-`publishConfig.provenance` is `true`, which requires the GitHub repo to be
-**public**. It is currently private; publishing will fail at that point, not at
-config time. Flip visibility before the first release.
+`publishConfig.provenance` is `true`. npm requires provenance to be generated
+from a **public** repository, on a cloud-hosted CI runner, with `id-token: write`
+— all of which `.github/workflows/release.yml` satisfies. The repo is public for
+this reason.
+
+Provenance therefore cannot be produced by a local `npm publish`. Releases go
+through CI: land a changeset on `master`, merge the version PR the workflow
+opens, and that publishes. The publish step fails safely when `NPM_TOKEN` is
+absent.
