@@ -22,11 +22,11 @@ jobs:
         # absolute path (`E:/...`) had to become a `file://` URL before Node's
         # ESM loader would take it. Linux-only CI would not have caught that.
         os: [ubuntu-latest, windows-latest]
+        # Development requires Node 22+, because pnpm 11 imports `node:sqlite`,
+        # which does not exist before 22.5 (`ERR_UNKNOWN_BUILTIN_MODULE`). That
+        # is a constraint on contributors, not on consumers — see the
+        # `engines-floor` job, which checks the range we actually publish.
         node: [22]
-        include:
-          # Lower bound of the supported range, checked once.
-          - os: ubuntu-latest
-            node: 20
 
     steps:
       - uses: actions/checkout@v4
@@ -48,3 +48,37 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+  engines-floor:
+    # Proves the `engines` floor we publish, which is a claim about *running*
+    # the package, not developing it. A consumer on Node 20 types
+    # `npx shadcn-drift`; they never invoke pnpm. So build with the toolchain's
+    # Node, then execute the built CLI under the oldest supported Node.
+    #
+    # Running the matrix at node 20 instead tested the wrong thing and could
+    # not even start: pnpm 11 needs `node:sqlite` (Node 22.5+).
+    name: engines floor (node 20 runtime)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run the built CLI on Node 20
+        run: |
+          node --version
+          node packages/shadcn-drift/dist/cli.js --version
+          node packages/shadcn-drift/dist/cli.js --help > /dev/null
+          # `config` exercises discovery, JSONC parsing and alias resolution
+          # without touching the network.
+          node packages/shadcn-drift/dist/cli.js config \
+            --cwd packages/shadcn-drift/test/fixtures/projects/subpath-imports-app

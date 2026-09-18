@@ -5,6 +5,18 @@ each package in `packages/*` publishes under its own name.
 
 ## Toolchain constraints that will bite you
 
+### Two different Node floors, and they are not the same number
+
+|                                 | Node    | Why                                                                                                                            |
+| ------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **Developing** this repo        | **22+** | pnpm 11 imports `node:sqlite`, added in 22.5. On Node 20 it dies with `ERR_UNKNOWN_BUILTIN_MODULE` before installing anything. |
+| **Running** a published package | **20+** | What `engines` declares. Consumers type `npx shadcn-drift`; they never invoke pnpm.                                            |
+
+Do not "fix" a Node 20 CI failure by lowering `engines` — that conflates a
+contributor constraint with a consumer promise. The `engines-floor` job builds
+with the toolchain's Node, then executes the built CLI under Node 20, which
+tests the claim that is actually published.
+
 ### TypeScript is pinned to 6.x, deliberately
 
 Do not upgrade to TypeScript 7. `typescript-eslint` refuses to load against it:

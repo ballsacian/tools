@@ -15,7 +15,9 @@ semver meaningless.
 
 ## Development
 
-Requires Node ≥20 and pnpm.
+Requires **Node 22+** and pnpm — pnpm 11 itself needs 22.5+. The published
+packages run on Node 20+; that wider floor is verified separately in CI by
+executing the built CLI under Node 20.
 
 ```bash
 pnpm install
