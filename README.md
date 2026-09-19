@@ -9,9 +9,9 @@ semver meaningless.
 
 ## Packages
 
-| Package                                   | Version    | What it does                                                                                                                            |
-| ----------------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| [`shadcn-drift`](./packages/shadcn-drift) | unreleased | Detects drift between vendored shadcn/ui components and their registry sources, and verifies that what claims to be shadcn actually is. |
+| Package                                   | Version | What it does                                                                                                                            |
+| ----------------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| [`shadcn-drift`](./packages/shadcn-drift) | 0.2.0   | Detects drift between vendored shadcn/ui components and their registry sources, and verifies that what claims to be shadcn actually is. |
 
 ## Development
 
@@ -44,8 +44,8 @@ require granting `contents: write` and pull-request creation to the one job that
 also publishes; doing it here means that job can only read, mint a short-lived
 OIDC credential, and publish. There is no npm token anywhere — authentication is
 npm trusted publishing, so there is no long-lived secret for a workflow change
-to reach. Publishing then waits on a human
-reviewer. See [CLAUDE.md](./CLAUDE.md) § CI security model.
+to reach. Publishing then waits on a human reviewer. See
+[CLAUDE.md](./CLAUDE.md) § CI security model.
 
 ## Conventions
 

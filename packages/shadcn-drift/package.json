@@ -1,6 +1,6 @@
 {
   "name": "shadcn-drift",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Detect drift between vendored shadcn/ui components and their registry sources, and verify that what claims to be shadcn actually is.",
   "keywords": [
     "shadcn",
