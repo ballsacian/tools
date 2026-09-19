@@ -5,10 +5,11 @@ name: Release
 #
 # The usual changesets setup has CI open a "version packages" PR, which needs
 # `contents: write`, `pull-requests: write`, and the repository setting that
-# lets Actions create pull requests — all granted to the one workflow that also
-# holds NPM_TOKEN. Doing the version bump locally removes every one of those
-# from the job's blast radius. What is left can read the repo, mint an OIDC
-# token, and publish. It cannot write to the repository at all.
+# lets Actions create pull requests — all granted to the one workflow that
+# publishes. Doing the version bump locally removes every one of those from the
+# job's blast radius. What is left can read the repo, mint a short-lived OIDC
+# credential, and publish. It cannot write to the repository, and it holds no
+# long-lived secret of any kind.
 on:
   push:
     branches: [master]
@@ -25,11 +26,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
-    # NPM_TOKEN lives in this environment, not in repository secrets, so it is
-    # unreachable from any other workflow — including anything a merged pull
-    # request might add. Configure the environment with required reviewers and
-    # a branch restriction (master only) to make publishing a deliberate,
-    # human-approved act rather than an automatic consequence of a merge.
+    # There is no npm token to protect any more — authentication is OIDC (see
+    # the publish step). The environment is kept for its *other* property: a
+    # required human reviewer, restricted to `master`, so publishing is a
+    # deliberate act rather than an automatic consequence of a merge.
     environment: npm-publish
 
     permissions:
@@ -40,8 +40,8 @@ jobs:
 
     steps:
       # Pinned to commit SHAs. A mutable tag on a third-party action is a
-      # direct path to NPM_TOKEN: repoint `@v1`, and the new code runs in this
-      # job with the secret in its environment.
+      # direct path to the publish credential: repoint `@v1`, and new code runs
+      # in the job that can mint an OIDC token and push to the registry.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
@@ -58,13 +58,38 @@ jobs:
 
       - run: pnpm build
 
-      # `--no-git-tag` because this job deliberately cannot write to the
-      # repository. Tags are created and pushed by `pnpm version-packages`
-      # locally, alongside the version commit.
+      # Published by `npm`, not `pnpm`, and with no token at all.
       #
-      # A no-op when nothing needs publishing: changesets compares each
-      # package's version against the registry and exits cleanly if they match.
+      # Authentication is npm trusted publishing: the `id-token: write`
+      # permission above lets npm mint an OIDC credential proving this workflow,
+      # in this repository, produced the tarball. Provenance comes free with it —
+      # no `--provenance` flag, no NPM_TOKEN, nothing long-lived to leak.
+      #
+      # Why not `changeset publish`, which knows how to publish only what
+      # changed? Because changesets shells out to the detected package manager,
+      # which here is pnpm, and pnpm documents `--provenance` but says nothing
+      # about OIDC authentication. Those are different features: one attests a
+      # build, the other replaces the token. Only npm documents the second, so
+      # npm does this step. Revisit if pnpm documents OIDC support.
+      #
+      # The guard makes a re-run a no-op instead of a hard failure, which is what
+      # `changeset publish` was providing.
+      # Node 22 bundles npm 10.x; trusted publishing needs 11.5.1 or newer.
+      # Without this the publish fails asking for authentication, which reads
+      # like a misconfigured trusted publisher rather than an old client.
+      - name: Ensure npm supports trusted publishing
+        run: |
+          npm install -g npm@latest
+          npm --version
+
       - name: Publish
-        run: pnpm exec changeset publish --no-git-tag
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          cd packages/shadcn-drift
+          VERSION=$(node -p "require('./package.json').version")
+          NAME=$(node -p "require('./package.json').name")
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "$NAME@$VERSION is already published — nothing to do."
+          else
+            echo "Publishing $NAME@$VERSION"
+            npm publish --access public
+          fi
