@@ -41,8 +41,10 @@ git push --follow-tags
 
 The version bump is deliberately **not** done in CI. Doing it there would
 require granting `contents: write` and pull-request creation to the one job that
-also holds the npm token; doing it here means that job can only read, mint an
-OIDC token for provenance, and publish. Publishing then waits on a human
+also publishes; doing it here means that job can only read, mint a short-lived
+OIDC credential, and publish. There is no npm token anywhere — authentication is
+npm trusted publishing, so there is no long-lived secret for a workflow change
+to reach. Publishing then waits on a human
 reviewer. See [CLAUDE.md](./CLAUDE.md) § CI security model.
 
 ## Conventions

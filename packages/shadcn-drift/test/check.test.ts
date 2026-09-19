@@ -1,54 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { check, exitCodeFor, type ComponentResult } from '../src/check.js'
 import { resolveConfig } from '../src/config.js'
 import { ExitCode } from '../src/exit-codes.js'
-import { Registry, type FetchLike } from '../src/registry.js'
+import { fixtureRegistry } from './helpers/fixture-registry.js'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
-const registryDir = path.join(here, 'fixtures/registry')
 const appProject = path.join(here, 'fixtures/projects/subpath-imports-app')
-
-/**
- * A registry backed by recorded payloads.
- *
- * The suite must never touch the network: CI going red because ui.shadcn.com
- * had a bad day would train everyone to ignore it.
- */
-const fixtureFetch: FetchLike = async (url) => {
-  const ok = (body: string) => ({
-    ok: true,
-    status: 200,
-    text: () => Promise.resolve(body),
-  })
-
-  if (url.endsWith('/r/index.json')) {
-    return ok(await readFile(path.join(registryDir, 'index.json'), 'utf8'))
-  }
-
-  const match = /\/r\/styles\/([^/]+)\/([^/]+)\.json$/.exec(url)
-  if (match) {
-    const file = path.join(
-      registryDir,
-      `${match[1] ?? ''}__${match[2] ?? ''}.json`,
-    )
-    try {
-      return ok(await readFile(file, 'utf8'))
-    } catch {
-      // Exactly what the real registry does: a 404 status with an HTML body.
-      return {
-        ok: false,
-        status: 404,
-        text: () => readFile(path.join(registryDir, '404.html'), 'utf8'),
-      }
-    }
-  }
-  throw new Error(`unexpected fetch: ${url}`)
-}
-
-const fixtureRegistry = () => new Registry({ fetchImpl: fixtureFetch })
 
 const byFile = (results: readonly ComponentResult[], file: string) =>
   results.find((r) => r.file === file)
@@ -126,6 +85,8 @@ describe('exitCodeFor', () => {
     removed: 0,
     companions: [],
     note: null,
+    localHash: null,
+    upstreamHash: null,
     ...over,
   })
 
@@ -175,5 +136,124 @@ describe('exitCodeFor', () => {
     ]
     expect(exitCodeFor(results, false)).toBe(ExitCode.OK)
     expect(exitCodeFor(results, true)).toBe(ExitCode.DRIFT)
+  })
+})
+
+describe('--strict (spec §9.3)', () => {
+  const result = (over: Partial<ComponentResult>): ComponentResult => ({
+    file: 'x.tsx',
+    header: null,
+    style: null,
+    component: null,
+    verdict: 'clean',
+    problems: [],
+    diff: '',
+    added: 0,
+    removed: 0,
+    companions: [],
+    note: null,
+    localHash: null,
+    upstreamHash: null,
+    ...over,
+  })
+
+  it('fails an untagged file that happens to match upstream', () => {
+    // The inversion --strict exists for. A file identical to the registry is
+    // still unexamined: nobody has said whether it is meant to stay that way,
+    // and the next `shadcn add -o` will not be reviewable. Authenticity, not
+    // drift — the question is what the file *is*, not whether it changed.
+    const results = [result({ verdict: 'untracked-match' })]
+    expect(exitCodeFor(results, false)).toBe(ExitCode.OK)
+    expect(exitCodeFor(results, true)).toBe(ExitCode.AUTHENTICITY)
+  })
+
+  it('escalates an untagged file that differs from drift to authenticity', () => {
+    const results = [result({ verdict: 'untracked-drift' })]
+    expect(exitCodeFor(results, false)).toBe(ExitCode.DRIFT)
+    expect(exitCodeFor(results, true)).toBe(ExitCode.AUTHENTICITY)
+  })
+
+  it('passes a file that declares (ours), which is the whole point of the tag', () => {
+    // "We wrote this" and "nobody has looked at this yet" are the two states
+    // --strict has to tell apart, and a declared (ours) is the first one. If
+    // this failed there would be no way for a repo to reach a clean strict run,
+    // and the flag would be unusable rather than strict.
+    const declared = result({
+      verdict: 'ours',
+      header: {
+        state: 'ours',
+        style: null,
+        component: null,
+        reason: null,
+        raw: '/** shadcn/ui — (ours) */',
+      },
+    })
+    expect(exitCodeFor([declared], true)).toBe(ExitCode.OK)
+  })
+
+  it('fails the same file when the tag is absent', () => {
+    expect(exitCodeFor([result({ verdict: 'ours', header: null })], true)).toBe(
+      ExitCode.AUTHENTICITY,
+    )
+  })
+
+  it('treats a malformed header as drift, not as an untagged file', () => {
+    // It claims provenance — it is just written wrong. Escalating it to
+    // authenticity would say "this is not what it claims to be", which is a
+    // different and more alarming finding than "your header has a typo".
+    const results = [result({ verdict: 'malformed-header' })]
+    expect(exitCodeFor(results, false)).toBe(ExitCode.DRIFT)
+    expect(exitCodeFor(results, true)).toBe(ExitCode.DRIFT)
+  })
+
+  it('fails a header problem other than TODO even without --strict', () => {
+    // A (patched) tag with no reason is broken in both modes; only the reason
+    // `init` writes for you is given until --strict.
+    const results = [
+      result({
+        problems: [{ code: 'missing-reason', message: 'must say why' }],
+      }),
+    ]
+    expect(exitCodeFor(results, false)).toBe(ExitCode.DRIFT)
+  })
+
+  it('lets an unknown component outrank an untagged one', () => {
+    const results = [
+      result({ verdict: 'untracked-match' }),
+      result({ verdict: 'unknown-component' }),
+    ]
+    expect(exitCodeFor(results, true)).toBe(ExitCode.AUTHENTICITY)
+  })
+})
+
+describe('--strict — end to end', () => {
+  it('fails a directory of untagged files and names every one', async () => {
+    const config = await resolveConfig(
+      path.join(here, 'fixtures/projects/headerless-app/components.json'),
+    )
+    const report = await check(config, {
+      registry: fixtureRegistry(),
+      strict: true,
+    })
+
+    expect(report.exitCode).toBe(ExitCode.AUTHENTICITY)
+    const untagged = report.results.filter((r) => r.header === null)
+    expect(untagged.length).toBeGreaterThan(0)
+    // Everything without a header is reported, whether or not it matches.
+    expect(untagged.every((r) => r.verdict !== 'clean')).toBe(true)
+  })
+
+  it('passes the same directory without --strict, because tier 0 is not a gate', async () => {
+    // Untagged-and-identical is the shape of a repo that has never heard of
+    // this tool. Failing it by default would make `npx shadcn-drift` useless as
+    // a first look, which is goal 1.
+    const config = await resolveConfig(
+      path.join(here, 'fixtures/projects/headerless-app/components.json'),
+    )
+    const report = await check(config, { registry: fixtureRegistry() })
+    expect(
+      report.results.filter((r) => r.verdict === 'untracked-drift'),
+    ).toHaveLength(0)
+    expect(report.exitCode).toBe(ExitCode.DRIFT) // switch.tsx's stale (patched)
   })
 })

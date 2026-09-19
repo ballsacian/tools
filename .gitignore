@@ -10,6 +10,14 @@ dist/
 coverage/
 .vitest/
 
+# Scratch copies made by the `init` tests. They live *inside* `test/fixtures/`
+# on purpose: `init` writes to disk, and resolving the project's own Prettier
+# walks up from the project root — so a copy in the OS temp directory would
+# find no formatter and quietly exercise a different code path than the one
+# users hit. Everything under `test/fixtures/` is already excluded from ESLint,
+# Prettier and typecheck.
+packages/*/test/fixtures/.tmp/
+
 # editors & OS
 .DS_Store
 Thumbs.db
