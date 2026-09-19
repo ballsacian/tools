@@ -84,6 +84,27 @@ rewrite the thing under test.
 payloads belong in `test/fixtures/` as recordings. CI must not be able to go red
 because `ui.shadcn.com` had a bad day.
 
+### The recordings can go stale, and only one test can tell you
+
+That exclusion is what makes the suite trustworthy, and it is also the gap.
+Every other test is a recording captured on a particular day, and a green
+`pnpm test` cannot tell you when the registry stopped matching it — which is
+not hypothetical: `ui-drift.mjs` went from correct to 23 false positives
+without a line of it changing, because upstream moved underneath it. A stale
+recording reproduces that one level up, with the suite passing while the tool
+gets the real answer wrong.
+
+```bash
+DRIFT_LIVE=1 pnpm test
+```
+
+`test/registry.live.test.ts` is the only thing that closes it. It does not test
+component content — it pins each **assumption** separately (the URL shape, the
+bare `cn` placeholder step 5 exists for, the import ordering step 7 exists for,
+the 404-returns-HTML behaviour) so a failure names which assumption died rather
+than only that something differs. Run it before a release, and after any
+failure re-record the named payload rather than the whole directory.
+
 ## Exit codes are a contract
 
 `packages/shadcn-drift/src/exit-codes.ts`. The important split is that
