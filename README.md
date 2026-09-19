@@ -11,7 +11,7 @@ semver meaningless.
 
 | Package                                   | Version | What it does                                                                                                                            |
 | ----------------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| [`shadcn-drift`](./packages/shadcn-drift) | 0.2.0   | Detects drift between vendored shadcn/ui components and their registry sources, and verifies that what claims to be shadcn actually is. |
+| [`shadcn-drift`](./packages/shadcn-drift) | 0.2.1   | Detects drift between vendored shadcn/ui components and their registry sources, and verifies that what claims to be shadcn actually is. |
 
 ## Development
 
