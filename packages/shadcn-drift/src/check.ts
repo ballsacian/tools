@@ -108,6 +108,25 @@ function globToRegExp(pattern: string): RegExp {
   return new RegExp(`^${escaped}$`)
 }
 
+/**
+ * Files the shadcn CLI would never have written, so never components.
+ *
+ * A colocated `tags-input.test.tsx` next to `tags-input.tsx` is the common
+ * shape, and without this the tool reports it as `(ours)` — then `--strict`
+ * demands a provenance header on a test file, and `init` offers to write one.
+ * Both are nonsense, and the second is worse: `init` writing into a test is the
+ * tool editing a file it had no business classifying.
+ *
+ * Not left to `drift.ignore`. Zero-config is the premise, and "configure it to
+ * stop asking about your tests" is a setup step every repo that colocates them
+ * would have to discover by being told something wrong first.
+ *
+ * Deliberately narrow — extensions, not a guess at intent. `index.ts` is *not*
+ * here: a barrel someone added to `ui/` is a real source file, and whether it
+ * deserves a header is the author's call, not a filename heuristic's.
+ */
+const NOT_A_COMPONENT = /(\.(test|spec|stories|story)\.tsx?|\.d\.ts)$/
+
 export async function listComponentFiles(
   config: ResolvedConfig,
   only?: string,
@@ -129,6 +148,7 @@ export async function listComponentFiles(
   return entries
     .filter((e) => e.isFile() && /\.(tsx|ts)$/.test(e.name))
     .map((e) => e.name)
+    .filter((name) => !NOT_A_COMPONENT.test(name))
     .filter((name) => !ignore.some((re) => re.test(name)))
     .filter((name) => !onlyRe || onlyRe.test(name))
     .sort()

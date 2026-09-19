@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { check, exitCodeFor, type ComponentResult } from '../src/check.js'
+import {
+  check,
+  exitCodeFor,
+  listComponentFiles,
+  type ComponentResult,
+} from '../src/check.js'
 import { resolveConfig } from '../src/config.js'
 import { ExitCode } from '../src/exit-codes.js'
 import { fixtureRegistry } from './helpers/fixture-registry.js'
@@ -255,5 +260,53 @@ describe('--strict — end to end', () => {
       report.results.filter((r) => r.verdict === 'untracked-drift'),
     ).toHaveLength(0)
     expect(report.exitCode).toBe(ExitCode.DRIFT) // switch.tsx's stale (patched)
+  })
+})
+
+describe('what counts as a component', () => {
+  const headerlessApp = path.join(here, 'fixtures/projects/headerless-app')
+
+  it('skips colocated tests and stories', async () => {
+    // `ui/` is not exclusively the shadcn CLI's. A `tags-input.test.tsx` next
+    // to `tags-input.tsx` is ordinary, and treating it as a component means
+    // --strict demands a provenance header on a test file while `init` offers
+    // to write one — the tool editing a file it had no business classifying.
+    //
+    // Found by running --strict against a real 41-component repo, not from a
+    // hand-written case. Every classification bug so far has surfaced that way.
+    const config = await resolveConfig(
+      path.join(headerlessApp, 'components.json'),
+    )
+    const files = await listComponentFiles(config)
+
+    expect(files).toContain('create-select.tsx')
+    expect(files).not.toContain('create-select.test.tsx')
+    expect(files).not.toContain('create-select.stories.tsx')
+  })
+
+  it('does not fail --strict over a test file', async () => {
+    const config = await resolveConfig(
+      path.join(headerlessApp, 'components.json'),
+    )
+    const report = await check(config, {
+      registry: fixtureRegistry(),
+      strict: true,
+    })
+    expect(report.results.map((r) => r.file)).not.toContain(
+      'create-select.test.tsx',
+    )
+  })
+
+  it('still checks a barrel, because that is the author’s call to make', async () => {
+    // Deliberately narrow: extensions, not a guess at intent. An `index.ts`
+    // someone added to `ui/` is a real source file, and whether it deserves a
+    // header is not a filename heuristic's decision.
+    const config = await resolveConfig(
+      path.join(headerlessApp, 'components.json'),
+    )
+    const files = await listComponentFiles(config)
+    expect(files.some((f) => /\.(test|spec|stories)\./.test(f))).toBe(false)
+    // The nine real components plus create-select and status-pill.
+    expect(files).toHaveLength(11)
   })
 })
